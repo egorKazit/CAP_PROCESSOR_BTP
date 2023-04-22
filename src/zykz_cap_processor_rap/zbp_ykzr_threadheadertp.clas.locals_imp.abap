@@ -48,7 +48,7 @@ CLASS lsc_zykzr_threadheadertp DEFINITION INHERITING FROM cl_abap_behavior_saver
 
   PROTECTED SECTION.
 
-    METHODS save_modified REDEFINITION.
+    METHODS save_modified REDEFINITION .
 
 ENDCLASS.
 
@@ -319,45 +319,54 @@ CLASS lsc_zykzr_threadheadertp IMPLEMENTATION.
 
   METHOD save_modified.
 
+    DATA completed_threads TYPE STANDARD TABLE OF ZYKZR_ThreadHeaderTP.
+
     IF update-threadheader IS NOT INITIAL.
-      DATA(x) = 1.
+
+      completed_threads = VALUE #( FOR incomming_thread IN update-threadheader WHERE ( ProcessedFlag = abap_true ) ( CORRESPONDING #( incomming_thread ) ) ).
+
+      CHECK completed_threads IS NOT INITIAL.
+
+      SELECT uuid, status, processedflag
+        FROM zykz_cap_thread
+        FOR ALL ENTRIES IN @completed_threads
+        WHERE uuid          = @completed_threads-uuid
+          AND processedflag = @abap_false
+        INTO TABLE @DATA(non_completed_threads).
+
+      LOOP AT completed_threads REFERENCE INTO DATA(completed_thread).
+        CHECK line_exists( non_completed_threads[ uuid = completed_thread->uuid ] )
+          AND non_completed_threads[ uuid = completed_thread->uuid ]-processedflag <> completed_thread->ProcessedFlag.
+
+        DATA(job_start_info) = NEW cl_apj_rt_api=>ty_start_info( start_immediately = abap_true ).
+        DATA(job_parameters) = NEW cl_apj_rt_api=>tt_job_parameter_value( ( name = zcl_ykz_complete_entry_job=>p_thread_id
+                                                                            t_value = VALUE #( ( sign   = 'I'
+                                                                                                 option = 'EQ'
+                                                                                                 low    = completed_thread->uuid ) ) ) ).
+
+        TRY.
+            cl_apj_rt_api=>schedule_job(
+                EXPORTING
+                iv_job_template_name = 'ZTHREAD_COMPLETE_ENTRY_JOB_TMP'
+                iv_job_text = |Run completion|
+                is_start_info = job_start_info->*
+                it_job_parameter_value = job_parameters->*
+                IMPORTING
+                ev_jobname  = DATA(job_name)
+                ev_jobcount = DATA(job_count)
+                ).
+
+            cl_apj_rt_api=>get_job_status( EXPORTING iv_jobname  = job_name
+                                                     iv_jobcount = job_count
+                                           IMPORTING ev_job_status = DATA(status) ).
+
+          CATCH cx_apj_rt INTO DATA(apj_rt).
+            "handle exception
+        ENDTRY.
+
+      ENDLOOP.
+
     ENDIF.
-
-*      DATA(job_start_info) = NEW cl_apj_rt_api=>ty_start_info( start_immediately = abap_true ).
-*      DATA(job_parameters) = NEW cl_apj_rt_api=>tt_job_parameter_value( ( name = 'P_THREAD'
-*                                                                          t_value = VALUE #( ( sign   = 'I'
-*                                                                                               option = 'EQ'
-*                                                                                               low    = threadheader->uuid ) ) ) ).
-*
-*
-*      cl_apj_rt_api=>schedule_job(
-*          EXPORTING
-*          iv_job_template_name = 'ZTHREAD_COMPLETE_ENTRY_JOB_TMP'
-*          iv_job_text = |Run completion|
-*          is_start_info = job_start_info->*
-*          it_job_parameter_value = job_parameters->*
-*          IMPORTING
-*          ev_jobname  = DATA(job_name)
-*          ev_jobcount = DATA(job_count)
-*          ).
-
-*      DATA(job_start_info) = NEW cl_apj_rt_api=>ty_start_info( start_immediately = abap_true ).
-*      DATA(job_parameters) = NEW cl_apj_rt_api=>tt_job_parameter_value( ( name = 'P_THREAD'
-*                                                                          t_value = VALUE #( ( sign   = 'I'
-*                                                                                               option = 'EQ'
-*                                                                                               low    = update_ref->uuid ) ) ) ).
-*
-*
-*      cl_apj_rt_api=>schedule_job(
-*          EXPORTING
-*          iv_job_template_name = 'ZTHREAD_COMPLETE_ENTRY_JOB_TMP'
-*          iv_job_text = |Run completion|
-*          is_start_info = job_start_info->*
-*          it_job_parameter_value = job_parameters->*
-*          IMPORTING
-*          ev_jobname  = DATA(job_name)
-*          ev_jobcount = DATA(job_count)
-*          ).
 
   ENDMETHOD.
 
