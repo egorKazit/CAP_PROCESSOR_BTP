@@ -1,0 +1,20 @@
+projection;
+strict ( 2 );
+
+define behavior for ZYKZA_ThreadHeader alias ThreadHeader
+{
+  use action CreateEntityFromSource;
+  use action Abandon;
+  use action SubmitForApproval;
+  use action Approve;
+  use action Reject;
+  use action Complete;
+
+  use association _ThreadItemTP { create; }
+}
+
+define behavior for ZYKZA_ThreadItem alias ThreadItem
+{
+
+  use association _ThreadHeaderTP;
+}

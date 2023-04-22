@@ -1,0 +1,13 @@
+abstract;
+strict ( 1 );
+
+with hierarchy;
+
+define behavior for ZYKZD_ThreadHeader alias ThreadHeader
+{
+  association _Items;
+}
+
+define behavior for ZYKZD_ThreadItem alias ThreadItem
+{
+}

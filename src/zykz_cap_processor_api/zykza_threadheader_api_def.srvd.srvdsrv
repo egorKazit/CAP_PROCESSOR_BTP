@@ -1,0 +1,5 @@
+@EndUserText.label: 'Thread API Service Definition'
+define service ZYKZA_ThreadHeader_API_Def {
+  expose ZYKZA_ThreadHeader;
+  expose ZYKZA_ThreadItem;
+}

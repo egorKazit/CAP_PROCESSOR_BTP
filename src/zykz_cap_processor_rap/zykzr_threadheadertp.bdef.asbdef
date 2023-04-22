@@ -1,0 +1,40 @@
+managed implementation in class zbp_ykzr_threadheadertp unique;
+strict ( 2 );
+
+define behavior for ZYKZR_ThreadHeaderTP alias ThreadHeader
+persistent table zykz_cap_thread
+lock master
+early numbering
+authorization master ( global, instance )
+with additional save
+{
+  internal create;
+  internal update;
+  internal delete;
+
+  static factory action CreateEntityFromSource deep parameter ZYKZD_ThreadHeader [1];
+
+  action SubmitForApproval result [1] $self;
+  action Abandon result [1] $self;
+  action Approve result [1] $self;
+  action Reject result [1] $self;
+  action Complete result [1] $self;
+
+  field ( readonly ) UUID, Status, ProcessedFlag, Name, Thread;
+
+  determination SetInitialStatus on save { create; }
+
+  association _ThreadItemTP { create; }
+}
+
+define behavior for ZYKZR_ThreadItemTP alias ThreadItem
+persistent table zykz_cap_item
+lock dependent by _ThreadHeaderTP
+early numbering
+authorization dependent by _ThreadHeaderTP
+{
+  internal update;
+  internal delete;
+  field ( readonly ) UUID, ThreadUUID, NameOrContent, Type, Item;
+  association _ThreadHeaderTP;
+}
